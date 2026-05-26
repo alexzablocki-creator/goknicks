@@ -1,1 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Maria's Knicks Quest</title>
+    <style>
+        /* === CSS STYLING === */
+        :root {
+            --knicks-blue: #006BB6;
+            --knicks-orange: #F58426;
+            --knicks-white: #FFFFFF;
+            --knicks-black: #000000;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a1a1a;
+            overflow: hidden;
+            font-family: 'Impact', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 107, 182, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            color: var(--knicks-white);
+            text-align: center;
+            z-index: 10;
+        }
+
+        /* Updated Start Screen using the poster as background */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('mariaf.png') no-repeat center center;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Pushes button to the bottom */
+            align-items: center;
+            pointer-events: auto;
+            padding-bottom: 50px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        /* Hide text placeholders since the image has titles */
+        #start-screen h1, #start-screen p {
+            display: none; 
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 48px;
+            text-transform: uppercase;
+            text-shadow: 4px 4px 0 var(--knicks-orange), 6px 6px 0 var(--knicks-black);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        h2 {
+            font-size: 32px;
+            color: var(--knicks-orange);
+            text-shadow: 2px 2px 0 var(--knicks-black);
+        }
+
+        p {
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            max-width: 600px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 28px;
+            background: var(--knicks-orange);
+            color: var(--knicks-white);
+            border: 4px solid var(--knicks-white);
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Impact', sans-serif;
+            text-transform: uppercase;
+            box-shadow: 4px 4px 0 var(--knicks-black);
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: none;
+        }
+
+        /* Heads Up Display (HUD) */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            text-shadow: 2px 2px 0 var(--knicks-black);
+            color: var(--knicks-white);
+            font-size: 24px;
+            z-index: 5;
+        }
+
+        .hud-left, .hud-right {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .hud-right {
+            align-items: flex-end;
+        }
+
+        #location-display {
+            color: var(--knicks-orange);
+            font-size: 28px;
+        }
+
+        .meter-container {
+            width: 200px;
+            height: 25px;
+            border: 3px solid var(--knicks-white);
+            background: var(--knicks-black);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 5px;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+        }
+
+        .meter-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #F58426, #FFB347);
+            transition: width 0.3s ease-out;
+        }
+
+        #active-powerup {
+            color: #FFD700;
+            font-size: 18px;
+            margin-top: 5px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: grid;
+            grid-template-columns: 70px 70px 70px;
+            grid-template-rows: 70px 70px;
+            gap: 15px;
+            pointer-events: auto;
+            z-index: 5;
+        }
+
+        .ctrl-btn {
+            background: rgba(0, 107, 182, 0.6);
+            border: 3px solid var(--knicks-orange);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: var(--knicks-white);
+            text-shadow: 1px 1px 0 var(--knicks-black);
+            touch-action: none;
+        }
+
+        .ctrl-btn:active {
+            background: var(--knicks-orange);
+        }
+
+        .ctrl-up { grid-column: 2; grid-row: 1; }
+        .ctrl-left { grid-column: 1; grid-row: 2; }
+        .ctrl-down { grid-column: 2; grid-row: 2; }
+        .ctrl-right { grid-column: 3; grid-row: 2; }
+
+        @media (min-width: 768px) {
+            #mobile-controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        
+        <div id="hud" class="hidden">
+            <div class="hud-left">
+                <div id="location-display">Level 1: Grand Concourse</div>
+                <div>Points: <span id="score">0</span></div>
+                <div>Time: <span id="timer">60</span>s</div>
+                <div id="active-powerup"></div>
+            </div>
+            <div class="hud-right">
+                <div>Championship Meter</div>
+                <div class="meter-container">
+                    <div id="meter-fill" class="meter-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobile-controls" class="hidden">
+            <div class="ctrl-btn ctrl-up" id="btn-up">↑</div>
+            <div class="ctrl-btn ctrl-left" id="btn-left">←</div>
+            <div class="ctrl-btn ctrl-down" id="btn-down">↓</div>
+            <div class="ctrl-btn ctrl-right" id="btn-right">→</div>
+        </div>
+
+        <div id="start-screen">
+            <h1>Maria's Knicks Quest</h1>
+            <p>Rep the Bronx. Earn points. Bring home the championship!</p>
+            <button class="btn" id="start-btn">Start Quest!</button>
+        </div>
+
+        <div id="game-over-screen" class="screen hidden">
+            <h1>Time's Up!</h1>
+            <h2>The buzzer sounded.</h2>
+            <p>Final Score: <span id="final-score-lose"></span></p>
+            <button class="btn" id="retry-btn">Try Again</button>
+        </div>
+
+        <div id="victory-screen" class="screen hidden">
+            <h1>CHAMPIONSHIP WON!</h1>
+            <h2>Maria brought the Knicks closer to the championship!</h2>
+            <p>Final Score: <span id="final-score-win"></span></p>
+            <button class="btn" id="replay-btn">Play Again</button>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Load Spritesheet
+        const gameSheet = new Image();
+        gameSheet.src = 'mariaf.png'; // Links to your renamed image file
+
+        // UI Elements
+        const uiStart = document.getElementById('start-screen');
+        const uiGameOver = document.getElementById('game-over-screen');
+        const uiVictory = document.getElementById('victory-screen');
+        const uiHud = document.getElementById('hud');
+        const uiMobileControls = document.getElementById('mobile-controls');
+        const elScore = document.getElementById('score');
+        const elTimer = document.getElementById('timer');
+        const elMeterFill = document.getElementById('meter-fill');
+        const elLocation = document.getElementById('location-display');
+        const elPowerup = document.getElementById('active-powerup');
+
+        // Resize Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const LEVELS = [
+            "Grand Concourse",
+            "Yankee Stadium",
+            "Fordham University",
+            "Pelham Parkway",
+            "South Bronx Hoops"
+        ];
+        
+        let gameState = 'START';
+        let score = 0;
+        let timer = 60;
+        let championshipMeter = 0;
+        let currentLevelIndex = 0;
+        let lastTime = 0;
+        let timerInterval;
+
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+        window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+        window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+        const setupTouchControl = (btnId, keyName) => {
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+        };
+        setupTouchControl('btn-up', 'ArrowUp');
+        setupTouchControl('btn-down', 'ArrowDown');
+        setupTouchControl('btn-left', 'ArrowLeft');
+        setupTouchControl('btn-right', 'ArrowRight');
+
+        // Player
+        const player = {
+            x: 0, y: 0, size: 60, baseSpeed: 300, speed: 300, color: '#006BB6',
+            powerup: null, powerupTimer: 0, pointMultiplier: 1, isInvincible: false,
+
+            update(dt) {
+                if (this.powerupTimer > 0) {
+                    this.powerupTimer -= dt;
+                    if (this.powerupTimer <= 0) this.resetPowerups();
+                }
+                if (keys.ArrowUp) this.y -= this.speed * dt;
+                if (keys.ArrowDown) this.y += this.speed * dt;
+                if (keys.ArrowLeft) this.x -= this.speed * dt;
+                if (keys.ArrowRight) this.x += this.speed * dt;
+
+                this.x = Math.max(0, Math.min(canvas.width - this.size, this.x));
+                this.y = Math.max(0, Math.min(canvas.height - (this.size * 1.2), this.y));
+            },
+
+            draw(ctx) {
+                if (gameSheet.complete && gameSheet.naturalWidth > 0) {
+                    // Slices Maria from the middle area of the poster image
+                    ctx.drawImage(
+                        gameSheet, 
+                        250, 200, 500, 600, // Source coordinates
+                        this.x, this.y, this.size, this.size * 1.2 // Destination
+                    );
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.size, this.size * 1.2);
+                }
+
+                if (this.isInvincible) {
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.size/2, this.y + (this.size*1.2)/2, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            },
+
+            applyPowerup(type) {
+                this.resetPowerups();
+                this.powerup = type;
+                this.powerupTimer = 5;
+                if (type === 'Fast Break') {
+                    this.speed = this.baseSpeed * 1.5;
+                    elPowerup.innerText = '⚡ FAST BREAK! ⚡';
+                } else if (type === 'Defense Boost') {
+                    this.isInvincible = true;
+                    elPowerup.innerText = '🛡️ DEFENSE BOOST! 🛡️';
+                } else if (type === 'Knicks Spirit') {
+                    this.pointMultiplier = 2;
+                    elPowerup.innerText = '🔥 KNICKS SPIRIT! (2x PTS) 🔥';
+                }
+            },
+
+            resetPowerups() {
+                this.powerup = null;
+                this.speed = this.baseSpeed;
+                this.isInvincible = false;
+                this.pointMultiplier = 1;
+                elPowerup.innerText = '';
+            }
+        };
+
+        let collectibles = [];
+        let obstacles = [];
+        let powerups = [];
+
+        class Collectible {
+            constructor() {
+                this.radius = 20;
+                this.x = Math.random() * (canvas.width - this.radius*2) + this.radius;
+                this.y = Math.random() * (canvas.height - this.radius*2) + this.radius;
+            }
+            draw(ctx) {
+                if (gameSheet.complete && gameSheet.naturalWidth > 0) {
+                    // Slices the basketball from her hand
+                    ctx.drawImage(
+                        gameSheet,
+                        155, 430, 140, 140, // Source coordinates
+                        this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2
+                    );
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#F58426';
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        class Obstacle {
+            constructor(type, speedMod) {
+                this.size = 35;
+                this.x = Math.random() * (canvas.width - this.size);
+                this.y = Math.random() * (canvas.height - this.size);
+                this.type = type;
+                
+                if (type === 'cone') {
+                    this.vx = 0; this.vy = 0;
+                } else {
+                    let angle = Math.random() * Math.PI * 2;
+                    let speed = (100 + Math.random() * 100) * speedMod;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                }
+            }
+
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                if (this.x <= 0 || this.x >= canvas.width - this.size) this.vx *= -1;
+                if (this.y <= 0 || this.y >= canvas.height - this.size) this.vy *= -1;
+            }
+
+            draw(ctx) {
+                if (this.type === 'cone') {
+                    ctx.fillStyle = '#FF4500';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.size/2, this.y);
+                    ctx.lineTo(this.x + this.size, this.y + this.size);
+                    ctx.lineTo(this.x, this.y + this.size);
+                    ctx.fill();
+                } else if (this.type === 'pigeon') {
+                    ctx.fillStyle = '#808080';
+                    ctx.fillRect(this.x, this.y + this.size/2, this.size, this.size/2);
+                } else {
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(this.x, this.y, this.size, this.size);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(this.x+5, this.y+5, 8, 8);
+                }
+            }
+        }
+
+        class PowerUp {
+            constructor() {
+                this.radius = 15;
+                this.x = Math.random() * (canvas.width - this.radius*2) + this.radius;
+                this.y = Math.random() * (canvas.height - this.radius*2) + this.radius;
+                const types = ['Defense Boost', 'Fast Break', 'Knicks Spirit'];
+                this.type = types[Math.floor(Math.random() * types.length)];
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.type === 'Defense Boost' ? '#00FF00' : 
+                                this.type === 'Fast Break' ? '#00FFFF' : '#FFD700';
+                ctx.fill();
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function spawnLevelEntities() {
+            collectibles = [];
+            obstacles = [];
+            powerups = [];
+            
+            const numCollectibles = 5;
+            const numObstacles = 3 + currentLevelIndex * 2;
+            const speedMod = 1 + (currentLevelIndex * 0.2);
+
+            for(let i=0; i<numCollectibles; i++) collectibles.push(new Collectible());
+            
+            for(let i=0; i<numObstacles; i++) {
+                const types = ['cone', 'pigeon', 'defender'];
+                obstacles.push(new Obstacle(types[i % types.length], speedMod));
+            }
+
+            if (Math.random() > 0.3) powerups.push(new PowerUp());
+        }
+
+        function startGame() {
+            score = 0;
+            timer = 60;
+            championshipMeter = 0;
+            currentLevelIndex = 0;
+            
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            player.resetPowerups();
+
+            uiStart.style.display = 'none';
+            uiGameOver.classList.add('hidden');
+            uiVictory.classList.add('hidden');
+            uiHud.classList.remove('hidden');
+            
+            if(window.innerWidth < 768) {
+                uiMobileControls.classList.remove('hidden');
+            }
+
+            updateHUD();
+            spawnLevelEntities();
+
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(gameState === 'PLAYING') {
+                    timer--;
+                    updateHUD();
+                    if(timer <= 0) endGame('GAMEOVER');
+                }
+            }, 1000);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame(result) {
+            gameState = result;
+            clearInterval(timerInterval);
+            uiHud.classList.add('hidden');
+            uiMobileControls.classList.add('hidden');
+            
+            if(result === 'VICTORY') {
+                document.getElementById('final-score-win').innerText = score;
+                uiVictory.classList.remove('hidden');
+            } else {
+                document.getElementById('final-score-lose').innerText = score;
+                uiGameOver.classList.remove('hidden');
+            }
+        }
+
+        function updateHUD() {
+            elScore.innerText = score;
+            elTimer.innerText = timer;
+            elMeterFill.style.width = `${championshipMeter}%`;
+            elLocation.innerText = `Level ${currentLevelIndex + 1}: ${LEVELS[currentLevelIndex]}`;
+        }
+
+        function checkCollisions() {
+            const pRect = { left: player.x, right: player.x + player.size, top: player.y, bottom: player.y + (player.size*1.2) };
+
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                let c = collectibles[i];
+                if (c.x > pRect.left && c.x < pRect.right && c.y > pRect.top && c.y < pRect.bottom) {
+                    collectibles.splice(i, 1);
+                    score += (10 * player.pointMultiplier);
+                    championshipMeter += 4;
+                    
+                    if (championshipMeter >= 100) {
+                        championshipMeter = 100;
+                        updateHUD();
+                        endGame('VICTORY');
+                        return;
+                    }
+
+                    let expectedLevel = Math.floor(championshipMeter / 20);
+                    if (expectedLevel > currentLevelIndex && expectedLevel < 5) {
+                        currentLevelIndex = expectedLevel;
+                        timer += 15;
+                        spawnLevelEntities();
+                    }
+
+                    if (collectibles.length < 2) collectibles.push(new Collectible());
+                    updateHUD();
+                }
+            }
+
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let p = powerups[i];
+                if (p.x > pRect.left && p.x < pRect.right && p.y > pRect.top && p.y < pRect.bottom) {
+                    player.applyPowerup(p.type);
+                    powerups.splice(i, 1);
+                }
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let o = obstacles[i];
+                if (o.x < pRect.right && o.x + o.size > pRect.left && o.y < pRect.bottom && o.y + o.size > pRect.top) {
+                    if (player.isInvincible) {
+                        obstacles.splice(i, 1);
+                        score += 5;
+                        updateHUD();
+                    } else {
+                        timer -= 5;
+                        player.x = canvas.width/2;
+                        player.y = canvas.height/2;
+                        
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        if(timer <= 0) endGame('GAMEOVER');
+                        updateHUD();
+                    }
+                }
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'PLAYING') return;
+
+            let dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // Draw Background Map
+            if (gameSheet.complete && gameSheet.naturalWidth > 0) {
+                // Slices the top part of the poster for a Bronx map feel
+                ctx.drawImage(gameSheet, 0, 200, 1000, 400, 0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Darken overlay
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            player.update(dt);
+            obstacles.forEach(obs => { obs.update(dt); obs.draw(ctx); });
+            collectibles.forEach(c => c.draw(ctx));
+            powerups.forEach(p => p.draw(ctx));
+            player.draw(ctx);
+
+            checkCollisions();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('retry-btn').addEventListener('click', startGame);
+        document.getElementById('replay-btn').addEventListener('click', startGame);
+
+        // Pre-fill canvas with black while waiting to hit play
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    </script>
+</body>
+</html>
 
